@@ -1,0 +1,10 @@
+{
+  "productName": "FertilizerHelper",
+  "name": "fertilizer-helper",
+  "version": "1.0.0",
+  "description": "FertilizerHelper Desktop App",
+  "authors": ["FengJinlong"],
+  "iconUrl": "file:///build/icon.ico",
+  "setupIcon": "build/icon.ico",
+  "noMsi": true
+}

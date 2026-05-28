@@ -1,0 +1,64 @@
+{
+  "body": [
+    {
+      "field": "Active",
+      "value": "1",
+      "valueType": "number"
+    },
+    {
+      "field": "HostName",
+      "value": "172.30.40.59",
+      "valueType": "string"
+    },
+    {
+      "field": "Port",
+      "value": "5432",
+      "valueType": "number"
+    },
+    {
+      "field": "UserName",
+      "value": "admin",
+      "valueType": "string"
+    },
+    {
+      "field": "Password",
+      "value": "aaa",
+      "valueType": "string"
+    },
+    {
+      "field": "DBName",
+      "value": "testDB",
+      "valueType": "string"
+    },
+    {
+      "field": "ConnectTimeOut",
+      "value": "30",
+      "valueType": "number"
+    },
+    {
+      "field": "ReConnectInterval",
+      "value": "10",
+      "valueType": "number"
+    },
+    {
+      "field": "PartTimeInterval",
+      "value": "5",
+      "valueType": "number"
+    },
+    {
+      "field": "CreateSuperTableMode",
+      "value": "0",
+      "valueType": "number"
+    },
+    {
+      "field": "OneTableName",
+      "value": "",
+      "valueType": "string"
+    }
+  ],
+  "dbtype": "3",
+  "proID": "c204689b-d52c-46ab-9673-6a9725a64d58",
+  "proName": "kf3.6工程",
+  "proVer": "1.0.0.1",
+  "tagGroup": "[]"
+}

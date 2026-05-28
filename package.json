@@ -1,0 +1,50 @@
+{
+  "name": "fertilizer-helper",
+  "version": "2.1.0",
+  "description": "FertilizerHelper - Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "npx electron-builder --win --x64",
+    "dist:mac": "npx electron-builder --mac --arm64",
+    "dist:mac-x64": "npx electron-builder --mac --x64"
+  },
+  "author": "FengJinlong",
+  "license": "MIT",
+  "build": {
+    "appId": "com.fengjinlong.fertilizer-helper",
+    "productName": "FertilizerHelper",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!release/**",
+      "!*.command"
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "identity": null,
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    }
+  },
+  "devDependencies": {
+    "electron": "^32.3.3",
+    "electron-builder": "^26.8.1"
+  }
+}

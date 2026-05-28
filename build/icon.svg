@@ -1,0 +1,39 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景渐变 -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ade80;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="leaf" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#86efac;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4ade80;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- 圆形背景 -->
+  <circle cx="256" cy="256" r="240" fill="url(#bg)"/>
+
+  <!-- 烧杯/容器 -->
+  <path d="M 200 180 L 200 350 Q 200 380 230 380 L 282 380 Q 312 380 312 350 L 312 180 Z"
+        fill="white" opacity="0.9" stroke="#16a34a" stroke-width="8"/>
+
+  <!-- 液体 -->
+  <path d="M 208 280 L 208 345 Q 208 372 230 372 L 282 372 Q 304 372 304 345 L 304 280 Z"
+        fill="#3b82f6" opacity="0.6"/>
+
+  <!-- 左侧叶子 -->
+  <ellipse cx="180" cy="240" rx="50" ry="80" fill="url(#leaf)"
+           transform="rotate(-30 180 240)"/>
+
+  <!-- 右侧叶子 -->
+  <ellipse cx="332" cy="240" rx="50" ry="80" fill="url(#leaf)"
+           transform="rotate(30 332 240)"/>
+
+  <!-- 中间叶子 -->
+  <ellipse cx="256" cy="200" rx="45" ry="75" fill="url(#leaf)"/>
+
+  <!-- NPK 文字 -->
+  <text x="256" y="310" font-family="Arial, sans-serif" font-size="48"
+        font-weight="bold" fill="#16a34a" text-anchor="middle">NPK</text>
+</svg>

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+release/
+**/.DS_Store
+Thumbs.db
+keys/private.pem
+builder-debug.yml
+.claude/

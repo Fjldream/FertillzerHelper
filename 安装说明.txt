@@ -1,0 +1,37 @@
+================================================
+  FertilizerHelper 安装说明（macOS）
+================================================
+
+【安装步骤】
+
+1. 解压 zip 文件，找到 mac-arm64 文件夹中的 FertilizerHelper.app
+
+2. 将 FertilizerHelper.app 拖入 /Applications 文件夹
+   （Finder 中按 Cmd+Shift+G，输入 /Applications 回车即可打开）
+
+3. 如果双击打开提示"已损坏"或"无法验证"，请打开「终端」应用
+   （在 启动台 → 其他 → 终端，或 Spotlight 搜索"终端"）
+
+4. 在终端中粘贴以下命令，按回车执行：
+
+   xattr -cr /Applications/FertilizerHelper.app
+
+5. 再次双击 FertilizerHelper.app 即可正常打开
+
+
+【常见问题】
+
+Q: 提示"Apple 无法检查其是否包含恶意软件"
+A: 右键点击 app → 选择「打开」→ 在弹窗中点击「打开」
+
+Q: 终端命令执行后仍无法打开
+A: 尝试加 sudo：
+   sudo xattr -cr /Applications/FertilizerHelper.app
+   输入电脑密码后回车
+
+Q: 如何卸载？
+A: 将 /Applications/FertilizerHelper.app 拖入废纸篓即可
+
+
+【技术支持】
+如有问题请联系开发者
