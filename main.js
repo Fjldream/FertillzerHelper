@@ -18,28 +18,83 @@ LMZZvQ7Xnrnz9sJ8LRVnQKI+O5Z5WtamrkEElkZukZ1ohjDy/HEnDjUesZ2RdAOr
 qQIDAQAB
 -----END PUBLIC KEY-----`;
 
-/** 生成稳定机器码（基于 hostname + MAC 地址） */
-function getStableMachineCode() {
-  const hostname = os.hostname();
-  const nets = os.networkInterfaces();
-  let mac = '';
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      if (!net.internal && net.mac !== '00:00:00:00:00:00') {
-        mac = net.mac;
-        break;
-      }
-    }
-    if (mac) break;
-  }
-  const raw = `${hostname}|${mac}|${os.platform()}`;
-  const hash = crypto.createHash('sha256').update(raw).digest('hex');
-  return hash.substring(0, 16).toUpperCase().match(/.{4}/g).join('-');
+/** machine_id 持久化文件路径 */
+function getMachineIdPath() {
+  return path.join(app.getPath('userData'), 'machine_id.json');
 }
 
 /** License 文件路径 */
 function getLicensePath() {
   return path.join(app.getPath('userData'), 'license.json');
+}
+
+/**
+ * 计算硬件机器码（不读缓存）
+ * 与旧逻辑相比：
+ *   1. 收集所有外部 MAC，去重排序后拼接 —— 避免单块网卡顺序变化导致机器码漂移
+ *   2. 加入 CPU 型号作为补充信号，防止全部 MAC 暂时缺失（如全部断网/禁用）时机器码崩塌
+ */
+function computeHardwareMachineCode() {
+  const hostname = os.hostname();
+  const nets = os.networkInterfaces();
+  const macs = [];
+  for (const name of Object.keys(nets || {})) {
+    const list = nets[name] || [];
+    for (const net of list) {
+      if (net && !net.internal && net.mac && net.mac !== '00:00:00:00:00:00') {
+        macs.push(net.mac.toLowerCase());
+      }
+    }
+  }
+  const macKey = Array.from(new Set(macs)).sort().join(',');
+
+  const cpus = os.cpus() || [];
+  const cpuModel = (cpus[0] && cpus[0].model) ? cpus[0].model.trim() : '';
+
+  const raw = `${hostname}|${macKey}|${os.platform()}|${cpuModel}`;
+  const hash = crypto.createHash('sha256').update(raw).digest('hex');
+  return hash.substring(0, 16).toUpperCase().match(/.{4}/g).join('-');
+}
+
+/**
+ * 获取稳定机器码：
+ *   - 优先从 userData/machine_id.json 读取（首次激活后绑定，硬件再变都不会改）
+ *   - 文件缺失时基于硬件计算并持久化
+ *   - 已激活用户（license.json 中存有 machineCode）会以 license 中的机器码为准回填，
+ *     防止历史用户升级后因机器码逻辑变化而被踢出激活
+ */
+function getStableMachineCode() {
+  const idPath = getMachineIdPath();
+
+  // 1. 命中持久化文件，直接返回
+  try {
+    const saved = JSON.parse(fs.readFileSync(idPath, 'utf8'));
+    if (saved && typeof saved.machineCode === 'string' && saved.machineCode) {
+      return saved.machineCode;
+    }
+  } catch (_) { /* 文件不存在或损坏，继续 */ }
+
+  // 2. 历史用户兼容：如果已经存在 license.json 且里面带 machineCode，则视为权威
+  let code = '';
+  try {
+    const lic = JSON.parse(fs.readFileSync(getLicensePath(), 'utf8'));
+    if (lic && typeof lic.machineCode === 'string' && lic.machineCode) {
+      code = lic.machineCode;
+    }
+  } catch (_) { /* 没有就忽略 */ }
+
+  // 3. 否则基于硬件计算
+  if (!code) code = computeHardwareMachineCode();
+
+  // 4. 持久化（写失败不影响返回）
+  try {
+    fs.writeFileSync(idPath, JSON.stringify({
+      machineCode: code,
+      generatedAt: new Date().toISOString(),
+    }, null, 2));
+  } catch (_) {}
+
+  return code;
 }
 
 /** 验证激活码签名 */
@@ -89,7 +144,10 @@ ipcMain.handle('license:verify', (event, machineCode, licenseKey) => {
 
 ipcMain.handle('license:save', (event, data) => {
   try {
-    fs.writeFileSync(getLicensePath(), JSON.stringify(data, null, 2));
+    // 写入前确保 machineCode 字段以当前稳定机器码为准，便于后续启动直接信任
+    const payload = { ...(data || {}) };
+    if (!payload.machineCode) payload.machineCode = getStableMachineCode();
+    fs.writeFileSync(getLicensePath(), JSON.stringify(payload, null, 2));
     return true;
   } catch { return false; }
 });
@@ -102,13 +160,24 @@ ipcMain.handle('license:load', () => {
 });
 
 ipcMain.handle('license:check', () => {
-  const machineCode = getStableMachineCode();
   try {
     const content = fs.readFileSync(getLicensePath(), 'utf8');
     const saved = JSON.parse(content);
     if (!saved || !saved.licenseKey) return { activated: false };
 
-    const result = verifyLicenseSignature(machineCode, saved.licenseKey);
+    // 优先用 license.json 中保存的 machineCode 验签 —— 避免硬件指纹偶发变化误踢用户
+    const candidates = [];
+    if (saved.machineCode) candidates.push(saved.machineCode);
+    const currentCode = getStableMachineCode();
+    if (!candidates.includes(currentCode)) candidates.push(currentCode);
+
+    let result = { valid: false, message: '激活码无效或已被篡改' };
+    for (const code of candidates) {
+      const r = verifyLicenseSignature(code, saved.licenseKey);
+      if (r.valid) { result = r; break; }
+      result = r;
+    }
+
     return {
       activated: result.valid,
       expiryDate: result.expiryDate || saved.expiryDate,

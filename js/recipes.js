@@ -102,6 +102,22 @@ function doSaveRecipe(activeTab) {
     if (activeTab === 'formula') {
       const cached = AppState.lastFormulaResult;
       if (!cached) { alert('请先完成配方求解'); return; }
+      // 快照：当前页面上的可变原料行 + 固定辅料行（含名称、固定百分比），
+      // 用于加载时一比一还原配方录入区，而不是只回填几个目标参数
+      const snapshot = {
+        formulaRows: (typeof formulaRows !== 'undefined' ? formulaRows : []).map((r, i) => {
+          const sel = document.getElementById('fr' + i + '_sel');
+          return { name: sel ? sel.value : r.name };
+        }),
+        fixedRows: (typeof fixedRows !== 'undefined' ? fixedRows : []).map((r, i) => {
+          const sel = document.getElementById('fx' + i + '_sel');
+          // pct 由 input 的 onchange 实时写回到 fixedRows[i].pct，这里直接取内存值
+          return {
+            name: sel ? sel.value : r.name,
+            pct: +r.pct || 0,
+          };
+        }),
+      };
       recipe = {
         id: Date.now(),
         name,
@@ -114,6 +130,7 @@ function doSaveRecipe(activeTab) {
           totalKg: +document.getElementById('f_total').value,
           minNPK: +document.getElementById('f_minNPK').value,
         },
+        snapshot,
         result: {
           allRaws: cached.allRaws.map(r => ({name: r.name, n: r.n, p: r.p, k: r.k, price: r.price})),
           allPcts: cached.allPcts,
@@ -135,11 +152,20 @@ function doSaveRecipe(activeTab) {
         } else {
           pct = row.pct / 100;
         }
-        return { raw: {name: raw.name, n: raw.n, p: raw.p, k: raw.k, price: raw.price}, pct };
+        return { raw: {name: raw.name, n: raw.n, p: raw.p, k: raw.k, price: raw.price}, pct, name: rname, fixed: !!row.fixed };
       });
 
       const cost = rows.reduce((s, r) => s + r.pct * r.raw.price, 0);
       const extraCost = getTotalExtraCost();
+
+      // 快照：当前核价行（名称、是否固定、百分比），加载时一比一还原
+      const snapshot = {
+        pricingRows: rows.map(r => ({
+          name: r.name,
+          fixed: r.fixed,
+          pct: r.pct * 100, // 与 pricingRows 内部约定一致：百分比是 0~100
+        })),
+      };
 
       recipe = {
         id: Date.now(),
@@ -152,6 +178,7 @@ function doSaveRecipe(activeTab) {
           targetK: +document.getElementById('p_targetK').value,
           totalKg: +document.getElementById('p_total').value,
         },
+        snapshot,
         result: {
           allRaws: rows.map(r => r.raw),
           allPcts: rows.map(r => r.pct),
@@ -198,14 +225,62 @@ function loadRecipe(id) {
     document.getElementById('f_targetK').value = recipe.params.targetK;
     document.getElementById('f_total').value = recipe.params.totalKg;
     document.getElementById('f_minNPK').value = recipe.params.minNPK;
-    alert('配方参数已加载到含量计算 Tab，请点击"开始优化求解"');
+
+    // 有快照（v2.1.1+）：完整还原原料行 + 固定辅料 + 自动求解
+    if (recipe.snapshot && Array.isArray(recipe.snapshot.formulaRows)) {
+      // 保留 snapshot 中"已不存在"的原料名 —— buildSelect 会用「（已不存在）」提示用户
+      formulaRows = recipe.snapshot.formulaRows.map(r => ({ name: r.name }));
+      fixedRows = (recipe.snapshot.fixedRows || []).map(r => ({ name: r.name, pct: +r.pct || 0 }));
+      // 同步到 AppState（保持引用一致，与全局 let 别名共存）
+      AppState.formulaRows = formulaRows;
+      AppState.fixedRows = fixedRows;
+      renderFormulaRows();
+      renderFixedRows();
+      saveAll();
+
+      // 触发一次求解，让结果区显示出来；如有原料缺失，求解会自动回退或提示
+      try {
+        if (typeof solveFormula === 'function') solveFormula();
+      } catch (e) {
+        console.error('loadRecipe solveFormula failed:', e);
+      }
+      const missing = formulaRows.filter(r => !getRaw(r.name)).map(r => r.name)
+        .concat((fixedRows || []).filter(r => !getRaw(r.name)).map(r => r.name));
+      if (missing.length > 0) {
+        alert('配方已加载。注意：以下原料在原料库中不存在，请补齐后重新求解：\n' + missing.join('、'));
+      } else {
+        alert('配方已加载并完成求解。');
+      }
+    } else {
+      // 老配方（无 snapshot），仅回填参数，行为保持兼容
+      alert('配方参数已加载到含量计算 Tab，请点击"开始优化求解"');
+    }
   } else {
     switchTab('pricing');
     document.getElementById('p_targetN').value = recipe.params.targetN;
     document.getElementById('p_targetP').value = recipe.params.targetP;
     document.getElementById('p_targetK').value = recipe.params.targetK;
     document.getElementById('p_total').value = recipe.params.totalKg;
-    alert('配方参数已加载到核价计算 Tab');
+
+    if (recipe.snapshot && Array.isArray(recipe.snapshot.pricingRows)) {
+      pricingRows = recipe.snapshot.pricingRows.map(r => ({
+        name: r.name,
+        fixed: !!r.fixed,
+        pct: +r.pct || 0,
+      }));
+      AppState.pricingRows = pricingRows;
+      renderPricingRows(); // 内部会调用 calcPricing()
+      saveAll();
+
+      const missing = pricingRows.filter(r => !getRaw(r.name)).map(r => r.name);
+      if (missing.length > 0) {
+        alert('配方已加载。注意：以下原料在原料库中不存在，请补齐：\n' + missing.join('、'));
+      } else {
+        alert('配方已加载到核价计算 Tab，结果已重新计算。');
+      }
+    } else {
+      alert('配方参数已加载到核价计算 Tab');
+    }
   }
 }
 
