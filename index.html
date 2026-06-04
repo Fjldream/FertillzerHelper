@@ -250,6 +250,27 @@
   <script>
     // 激活检查逻辑
     window.addEventListener('DOMContentLoaded', async () => {
+      // 读取应用配置
+      let enableLicense = true;
+      if (window.electronAPI && window.electronAPI.getAppConfig) {
+        try {
+          const config = await window.electronAPI.getAppConfig();
+          enableLicense = config.enableLicense !== false;
+        } catch (e) { /* 默认开启 */ }
+      }
+
+      // 如果关闭了激活码功能，直接进入主界面
+      if (!enableLicense) {
+        document.getElementById('activation-overlay').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+        document.getElementById('license-info').textContent = '';
+        // 隐藏导航栏中的"激活管理" Tab
+        const licenseTabBtn = document.querySelector('.tab-btn[onclick*="license"]');
+        if (licenseTabBtn) licenseTabBtn.style.display = 'none';
+        checkVersionUpdate();
+        return;
+      }
+
       const machineCode = await generateMachineCode();
       document.getElementById('machine-code').value = machineCode;
 

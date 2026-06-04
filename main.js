@@ -6,6 +6,19 @@ const fs = require('fs');
 
 let mainWindow;
 
+// ===== 应用配置 =====
+
+/** 读取 app-config.json，打包时可通过修改 enableLicense 开关激活码功能 */
+function loadAppConfig() {
+  try {
+    const configPath = path.join(__dirname, 'app-config.json');
+    const raw = fs.readFileSync(configPath, 'utf8');
+    return JSON.parse(raw);
+  } catch { return { enableLicense: true }; }
+}
+
+const APP_CONFIG = loadAppConfig();
+
 // ===== 激活码相关 =====
 
 const PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
@@ -136,6 +149,8 @@ function verifyLicenseSignature(machineCode, licenseKey) {
 
 // ===== IPC Handlers =====
 
+ipcMain.handle('app:getConfig', () => APP_CONFIG);
+
 ipcMain.handle('license:getMachineCode', () => getStableMachineCode());
 
 ipcMain.handle('license:verify', (event, machineCode, licenseKey) => {
@@ -160,6 +175,10 @@ ipcMain.handle('license:load', () => {
 });
 
 ipcMain.handle('license:check', () => {
+  // 激活码功能关闭时，直接返回已激活
+  if (!APP_CONFIG.enableLicense) {
+    return { activated: true, expiryDate: '永久（激活码已关闭）' };
+  }
   try {
     const content = fs.readFileSync(getLicensePath(), 'utf8');
     const saved = JSON.parse(content);

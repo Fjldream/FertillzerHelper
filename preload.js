@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  getAppConfig: () => ipcRenderer.invoke('app:getConfig'),
   getMachineCode: () => ipcRenderer.invoke('license:getMachineCode'),
   verifyLicense: (machineCode, licenseKey) => ipcRenderer.invoke('license:verify', machineCode, licenseKey),
   saveLicense: (data) => ipcRenderer.invoke('license:save', data),
